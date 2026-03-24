@@ -1,0 +1,36 @@
+# IDE / editör
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# Go derleme çıktıları
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.html
+coverage.txt
+
+# Bağımlılık (isteğe bağlı vendor kullanımı)
+vendor/
+
+# Go workspace (monorepo / local)
+go.work
+go.work.sum
+
+# İşletim sistemi
+.DS_Store
+Thumbs.db
+
+# Ortam / gizli yapılandırma
+.env
+.env.*
+!.env.example
