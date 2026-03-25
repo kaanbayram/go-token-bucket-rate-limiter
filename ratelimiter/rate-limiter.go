@@ -3,8 +3,8 @@ package ratelimiter
 import (
 	"context"
 	"fmt"
-	"go-token-bucket-rate-limiter/redisclient"
 	"go-token-bucket-rate-limiter/utils"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -19,25 +19,32 @@ type RateLimiterConfig struct {
 }
 
 type RateLimiter struct {
-	redisClient    redisclient.RedisClient
+	redisClient    redis.Cmdable
 	redisLuaScript *redis.Script
 	cfg            RateLimiterConfig
 }
 
-func New(redisClient *redisclient.RedisClient, cfg RateLimiterConfig) *RateLimiter {
+func New(redisClient redis.Cmdable, cfg RateLimiterConfig) (*RateLimiter, error) {
+	if redisClient == nil {
+		return nil, fmt.Errorf("redis client is required")
+	}
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+
 	return &RateLimiter{
-		redisClient:    *redisClient,
+		redisClient:    redisClient,
 		redisLuaScript: redis.NewScript(utils.Constants.LuaScript),
 		cfg:            cfg,
-	}
+	}, nil
 }
 
-func (rl *RateLimiter) Allow(ctx context.Context, key string) (bool, error) {
+func (rl *RateLimiter) AllowContext(ctx context.Context, key string) (bool, error) {
 	redisKey := fmt.Sprintf("%s:%s", rl.cfg.KeyPrefix, key)
 
 	now := time.Now().Unix()
 
-	res, err := rl.redisLuaScript.Run(ctx, rl.redisClient.Rdb,
+	res, err := rl.redisLuaScript.Run(ctx, rl.redisClient,
 		[]string{redisKey},
 		rl.cfg.Capacity,
 		rl.cfg.RefillRate,
@@ -59,4 +66,25 @@ func (rl *RateLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	}
 
 	return allowed == 1, nil
+}
+
+func (rl *RateLimiter) Allow(key string) (bool, error) {
+	return rl.AllowContext(context.Background(), key)
+}
+
+func validateConfig(cfg RateLimiterConfig) error {
+	if cfg.Capacity <= 0 {
+		return fmt.Errorf("capacity must be greater than 0")
+	}
+	if cfg.RefillRate <= 0 {
+		return fmt.Errorf("refill rate must be greater than 0")
+	}
+	if cfg.TTL <= 0 {
+		return fmt.Errorf("ttl must be greater than 0")
+	}
+	if strings.TrimSpace(cfg.KeyPrefix) == "" {
+		return fmt.Errorf("key prefix is required")
+	}
+
+	return nil
 }

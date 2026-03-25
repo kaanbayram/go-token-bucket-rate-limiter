@@ -2,7 +2,6 @@ package redisclient
 
 import (
 	"context"
-	"fmt"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -16,10 +15,8 @@ func New(ctx context.Context, url string) (*RedisClient, error) {
 	})
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	fmt.Println("Redis connected ✅")
 
 	return &RedisClient{
 		Rdb: rdb,

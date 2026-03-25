@@ -19,6 +19,40 @@ Replace the module path with the published path (e.g. `github.com/<user>/go-toke
 
 Depends on [go-redis v9](https://github.com/redis/go-redis).
 
-Import `ratelimiter` (and `redisclient` if the bundled helper is used). Configuration and keys are supplied by the host application — see package docs and `server` for a runnable sketch.
+## Quick usage
 
-**Packages:** `ratelimiter` — limiter API; `redisclient` — Redis helper; `server` — example entrypoint. `utils` is internal (Lua).
+```go
+ctx := context.Background()
+rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+
+if err := rdb.Ping(ctx).Err(); err != nil {
+	log.Fatal(err)
+}
+
+limiter, err := ratelimiter.New(rdb, ratelimiter.RateLimiterConfig{
+	Capacity:   10,
+	RefillRate: 2,
+	TTL:        60 * time.Second,
+	KeyPrefix:  "rate_limit",
+	FailOpen:   true,
+})
+if err != nil {
+	log.Fatal(err)
+}
+
+allowed, err := limiter.Allow("127.0.0.1")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println("allowed:", allowed)
+```
+
+Import `ratelimiter` directly; `redisclient` is optional helper code. Configuration and keys are supplied by the host application.
+
+Run the example app:
+
+```bash
+go run ./cmd/example
+```
+
+**Packages:** `ratelimiter` — limiter API; `redisclient` — Redis helper; `cmd/example` — runnable example app. `utils` is internal (Lua).
